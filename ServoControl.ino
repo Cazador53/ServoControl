@@ -1,66 +1,92 @@
 #include <Servo.h>
 
+// Servo objects for the valves
 Servo oxServo;
 Servo fuelServo;
 
+// servo handling 
 int servoVal;
+float servoPOS;
+
+// hardware pins
 const int ledPin = 12;
+const int hallEffect = 8;
+
+// Emergency abort flag
 bool emgAbort = false;
 
+// Generic Cycle struct
+// handles time open/close operations
 struct valveCycle {
   bool active = false;
   unsigned long startTime = 0;
   unsigned long cycleTime = 0;
 };
 
+// Ignition Sequence struct
+// handles countdown, timing and the LED "GO" light
 struct ignitionSequence {
   bool active = false;
   unsigned long startTime = 0;
   unsigned long countdownMS = 0;
 };
 
+// instances for structs 
 ignitionSequence sequence;
 valveCycle oxCycle;
 valveCycle fuelCycle;
 
+// check if the abort flag has been set to true
 bool checkAbort() {
   if (emgAbort) return(true);
   else return(false);
 }
 
+// Get all data and send over the serial line
 void readAndSendData() {
+  // Read servo positions ||| This method is temp until we get feedback servos for exact POS
   float oxValue = oxServo.read();
   float fuelValue = fuelServo.read();
 
+  // send data over Serial ||| this will just be the values and no string for better parsing on the python side
   Serial.println("Ox Servo: " + String(oxValue));
   Serial.println("Fuel Servo: " + String(fuelValue));
 }
 
+// Read data from the Serial port when available 
 String readMessage() {
   String message = "";
+  // make sure we arent interfering with soemthing else
   if (Serial.available()) {
     message = Serial.readString();
+    // set every message to lowercase for easy handling
     message.toLowerCase();
+    // trim the empty space out of the message
     message.trim();
   }
 
   return message;
 }
 
+// Starts the valve cycle ||| open valve for cycleTime
 void startValveCycle(valveCycle &cycle, Servo &servo) {
   cycle.active = true;
   cycle.startTime = millis();
-  servo.write(0);
+  servo.write(0); // set servo POS to 0
 }
 
+// Starts the ignition sequence using CountdownMS
 void startIgnitionSequence() {
   sequence.active = true;
   sequence.startTime = millis();
 }
 
+// Runs the state maching for valve cycle
 void updateValveCycle(valveCycle &cycle, Servo &servo) {
+  // make sure the cycle is active 
   if (!cycle.active) return;
 
+  // make sure we havent aborted before doing anything
   if (checkAbort()) {
     servo.write(0);
     !cycle.active;
@@ -78,10 +104,12 @@ void updateValveCycle(valveCycle &cycle, Servo &servo) {
   }
 }
 
+// Run the full ignition sequence 
 void ignitionSequenceRun() {
   if (!sequence.active) return;
 
   if (checkAbort()) {
+    // set everything to 0 and disable the sequence
     oxServo.write(0);
     fuelServo.write(0);
     digitalWrite(ledPin, LOW);
@@ -91,14 +119,16 @@ void ignitionSequenceRun() {
 
   unsigned long elapsed = millis() - sequence.startTime;
 
-
+  // 5 second before countdown ends enable LED for sparkbox crew
   if (elapsed >= (sequence.countdownMS - 5000) && elapsed < sequence.countdownMS) {
     digitalWrite(ledPin, HIGH);
   }
+  // when countdown finishes open valves
   if (elapsed >= sequence.countdownMS && elapsed < sequence.countdownMS + 4000) {
     oxServo.write(180);
     fuelServo.write(180);
   }
+  // wait 4 seconds and close valves and disable sequence 
   if (elapsed >= sequence.countdownMS + 4000) {
     oxServo.write(0);
     fuelServo.write(0);
@@ -119,11 +149,14 @@ void setup() {
 }
 
 void loop() {
+  // read message every loop
   String command = readMessage();
 
   readAndSendData();
 
+  // command checking 
   if (command.startsWith("oxservo")) {
+    // parse int for precise movement 
     servoVal = command.substring(8).toInt();
     oxServo.write(servoVal);
   }
