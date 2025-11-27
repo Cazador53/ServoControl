@@ -7,6 +7,7 @@ Servo fuelServo;
 // servo handling 
 int servoVal;
 float servoPOS;
+int increment = 0;
 
 // hardware pins
 const int ledPin = 12;
@@ -49,8 +50,26 @@ void readAndSendData() {
   float fuelValue = fuelServo.read();
 
   // send data over Serial ||| this will just be the values and no string for better parsing on the python side
-  Serial.println("Ox Servo: " + String(oxValue));
-  Serial.println("Fuel Servo: " + String(fuelValue));
+  Serial.println(String(oxValue) + " " + String(fuelValue));
+}
+
+void incrementOpen() {
+
+  if (increment == 0) {
+    oxServo.write(0);
+    fuelServo.write(0);
+    increment++;
+  }
+  else if (increment == 10) {
+    oxServo.write(0);
+    fuelServo.write(0);
+    increment = 0;
+  }
+  else {
+    oxServo.write(oxServo.read() + 10);
+    fuelServo.write(fuelServo.read() + 10);
+    increment++;
+  }
 }
 
 // Read data from the Serial port when available 
@@ -176,6 +195,7 @@ void loop() {
     sequence.countdownMS = command.substring(6).toInt() * 1000;
     startIgnitionSequence();
   }
+  if (command == "incrementopen") incrementOpen();
   if (command == "abort") emgAbort = true;
 
   updateValveCycle(oxCycle, oxServo);
