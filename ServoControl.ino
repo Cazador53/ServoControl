@@ -46,8 +46,8 @@ bool checkAbort() {
 // Get all data and send over the serial line
 void readAndSendData() {
   // Read servo positions ||| This method is temp until we get feedback servos for exact POS
-  float oxValue = oxServo.read();
-  float fuelValue = fuelServo.read();
+  int oxValue = oxServo.read();
+  int fuelValue = fuelServo.read();
 
   // send data over Serial ||| this will just be the values and no string for better parsing on the python side
   Serial.println(String(oxValue) + " " + String(fuelValue));
@@ -76,12 +76,12 @@ void incrementOpen() {
 String readMessage() {
   String message = "";
   // make sure we arent interfering with soemthing else
-  if (Serial.available()) {
-    message = Serial.readString();
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\n') break; // End of string
     // set every message to lowercase for easy handling
-    message.toLowerCase();
-    // trim the empty space out of the message
-    message.trim();
+    message += char(tolower(c));
+    delay(2);
   }
 
   return message;
@@ -152,7 +152,7 @@ void ignitionSequenceRun() {
     oxServo.write(0);
     fuelServo.write(0);
     digitalWrite(ledPin, LOW);
-    !sequence.active;
+    sequence.active = false;
   }
 }
 
