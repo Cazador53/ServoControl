@@ -45,12 +45,17 @@ bool checkAbort() {
 
 // Get all data and send over the serial line
 void readAndSendData() {
-  // Read servo positions ||| This method is temp until we get feedback servos for exact POS
-  int oxValue = oxServo.read();
-  int fuelValue = fuelServo.read();
+  unsigned long lastSend = 0;
 
-  // send data over Serial ||| this will just be the values and no string for better parsing on the python side
-  Serial.println(String(oxValue) + " " + String(fuelValue));
+  if(millis() - lastSend >= 50) {
+    // Read servo positions ||| This method is temp until we get feedback servos for exact POS
+    int oxValue = oxServo.read();
+    int fuelValue = fuelServo.read();
+
+    // send data over Serial ||| this will just be the values and no string for better parsing on the python side
+    Serial.println(String(oxValue) + " " + String(fuelValue));
+    lastSend = millis();
+  }
 }
 
 void incrementOpen() {
@@ -89,13 +94,18 @@ String readMessage() {
 
 // Starts the valve cycle ||| open valve for cycleTime
 void startValveCycle(valveCycle &cycle, Servo &servo) {
+  if (sequence.active) return;
+  
   cycle.active = true;
   cycle.startTime = millis();
   servo.write(0); // set servo POS to 0
+
 }
 
 // Starts the ignition sequence using CountdownMS
 void startIgnitionSequence() {
+  if(oxCycle.active || fuelCycle.active) return;
+
   sequence.active = true;
   sequence.startTime = millis();
 }
