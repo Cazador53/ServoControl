@@ -8,6 +8,7 @@ Servo fuelServo;
 int servoVal;
 float servoPOS;
 int increment = 0;
+int max = 90;
 
 // hardware pins
 const int ledPin = 12;
@@ -125,7 +126,7 @@ void updateValveCycle(valveCycle &cycle, Servo &servo) {
   unsigned long elapsed = millis() - cycle.startTime;
 
   if (elapsed < cycle.cycleTime) {
-    servo.write(180);   // Open
+    servo.write(max);   // Open
   }
   else if (elapsed >= cycle.cycleTime) {
     servo.write(0);     // Close
@@ -154,8 +155,8 @@ void ignitionSequenceRun() {
   }
   // when countdown finishes open valves
   if (elapsed >= sequence.countdownMS && elapsed < sequence.countdownMS + 4000) {
-    oxServo.write(180);
-    fuelServo.write(180);
+    oxServo.write(max);
+    fuelServo.write(max);
   }
   // wait 4 seconds and close valves and disable sequence 
   if (elapsed >= sequence.countdownMS + 4000) {
